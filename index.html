@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Pyramid Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000000;
+    --panel:#111111;
+    --panel2:#0c0c0c;
+    --line:#262626;
+    --line-strong:#4a4a4a;
+    --ink:#f3f3f3;
+    --muted:#8f8f8f;
+    --tier-a:#ffffff; --tier-a-ink:#0a0a0a;
+    --tier-b:#c9c9c9; --tier-b-ink:#0a0a0a;
+    --tier-c:#7c7c7c; --tier-c-ink:#0a0a0a;
+    --tier-d:#333333; --tier-d-ink:#f3f3f3;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Vazirmatn', sans-serif;
+    min-height:100vh;
+  }
+  .ltr{direction:ltr; unicode-bidi:isolate;}
+  .screen{ display:none; min-height:100vh; flex-direction:column; align-items:center; padding:30px 18px 60px; }
+  .screen.active{ display:flex; animation:screenIn 380ms ease; }
+  @keyframes screenIn{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:translateY(0);} }
+  h1,h2,h3{ margin:0; font-weight:900; }
+  p{ margin:0; }
+  button{ font-family:inherit; cursor:pointer; }
+  input{ font-family:inherit; }
+
+  /* ---------- Loading ---------- */
+  #screen-loading{ justify-content:center; gap:26px; cursor:pointer; }
+  .brand-title{ font-size:clamp(28px,8vw,42px); letter-spacing:1px; text-align:center; direction:ltr; opacity:0; animation:fadein 700ms ease forwards; animation-delay:1500ms; }
+  .brand-sub{ font-size:14px; color:var(--muted); text-align:center; opacity:0; animation:fadein 700ms ease forwards; animation-delay:1700ms; }
+  .load-pyramid{ width:min(260px,70vw); display:flex; flex-direction:column; align-items:center; }
+  .load-band{ height:44px; width:100%; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:20px; direction:ltr; opacity:0; transform:scaleY(0.2); transform-origin:bottom; }
+  .load-band.d{ background:var(--tier-d); color:var(--tier-d-ink); clip-path:polygon(8% 0%,92% 0%,100% 100%,0% 100%); animation:riseband 500ms ease forwards; animation-delay:0ms; }
+  .load-band.c{ background:var(--tier-c); color:var(--tier-c-ink); clip-path:polygon(17% 0%,83% 0%,92% 100%,8% 100%); animation:riseband 500ms ease forwards; animation-delay:220ms; }
+  .load-band.b{ background:var(--tier-b); color:var(--tier-b-ink); clip-path:polygon(27% 0%,73% 0%,83% 100%,17% 100%); animation:riseband 500ms ease forwards; animation-delay:440ms; }
+  .load-band.a{ background:var(--tier-a); color:var(--tier-a-ink); clip-path:polygon(37% 0%,63% 0%,73% 100%,27% 100%); animation:riseband 500ms ease forwards; animation-delay:660ms; }
+  .load-f{ margin-top:10px; width:56%; border:1px dashed var(--line-strong); text-align:center; padding:6px 0; font-weight:900; font-size:16px; color:var(--muted); direction:ltr; opacity:0; animation:fadein 500ms ease forwards; animation-delay:1000ms; }
+  .load-tap{ font-size:12px; color:var(--muted); opacity:0; animation:fadein 600ms ease forwards; animation-delay:2200ms; }
+  @keyframes riseband{ to{ opacity:1; transform:scaleY(1);} }
+  @keyframes fadein{ to{ opacity:1; } }
+
+  /* ---------- Shared layout ---------- */
+  .topbar{ width:100%; max-width:440px; display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+  .topbar .logo{ font-size:17px; direction:ltr; font-weight:900; letter-spacing:0.5px; }
+  .code-pill{ border:1px solid var(--line-strong); padding:4px 10px; font-size:13px; direction:ltr; letter-spacing:2px; color:var(--muted); }
+
+  .card{ width:100%; max-width:440px; background:var(--panel); border:1px solid var(--line); border-top:2px solid var(--ink); padding:22px 20px; }
+  .stack{ display:flex; flex-direction:column; gap:13px; }
+
+  .field label{ display:block; font-size:12.5px; color:var(--muted); margin-bottom:6px; }
+  .field input{ width:100%; background:transparent; border:none; border-bottom:1px solid var(--line-strong); color:var(--ink); font-size:16px; padding:9px 2px; outline:none; }
+  .field input:focus{ border-bottom-color:var(--ink); }
+
+  .btn{ width:100%; padding:14px 16px; background:var(--ink); color:#000; border:1px solid var(--ink); font-weight:700; font-size:15px; transition:opacity 150ms ease; }
+  .btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  .btn:active:not(:disabled){ opacity:0.75; }
+  .btn-ghost{ background:transparent; color:var(--ink); border:1px solid var(--line-strong); font-weight:500; }
+  .footer-nav{ width:100%; max-width:440px; display:flex; gap:10px; margin-top:24px; }
+  .footer-nav .btn{ font-size:13px; padding:11px; }
+
+  .home-title{ font-size:clamp(30px,9vw,44px); direction:ltr; text-align:center; margin-bottom:6px; }
+  .home-sub{ color:var(--muted); font-size:13.5px; text-align:center; margin-bottom:30px; max-width:340px; line-height:1.8; }
+
+  .eyebrow{ font-size:12.5px; color:var(--muted); margin-bottom:14px; }
+
+  .section-head{ width:100%; max-width:440px; display:flex; align-items:center; justify-content:space-between; margin:34px 0 12px; }
+  .section-head .title{ font-size:14px; color:var(--muted); }
+  .icon-btn{ background:none; border:none; color:var(--muted); font-size:16px; padding:4px 8px; }
+  .icon-btn:active{ color:var(--ink); }
+
+  .group-list{ width:100%; max-width:440px; border-top:1px solid var(--line); }
+  .group-row{ width:100%; display:flex; align-items:center; justify-content:space-between; padding:16px 4px; border-bottom:1px solid var(--line); background:none; border-right:none; border-left:none; border-top:none; color:var(--ink); text-align:right; font-size:15.5px; }
+  .group-row .row-main{ display:flex; flex-direction:column; gap:3px; align-items:flex-start; }
+  .group-row .row-sub{ font-size:12px; color:var(--muted); }
+  .group-row .chevron{ color:var(--muted); font-size:15px; direction:ltr; }
+  .empty-state{ color:var(--muted); font-size:13.5px; text-align:center; padding:22px 0; }
+
+  .member-list{ width:100%; max-width:440px; display:flex; flex-direction:column; border-top:1px solid var(--line); }
+  .member-row{ display:flex; align-items:center; justify-content:space-between; padding:12px 4px; border-bottom:1px solid var(--line); font-size:15px; }
+  .member-row .me-tag{ font-size:11px; color:var(--muted); border:1px solid var(--line-strong); padding:2px 6px; }
+
+  .check-row{ display:flex; align-items:center; gap:12px; padding:13px 4px; border-bottom:1px solid var(--line); font-size:15px; }
+  .check-row input[type=checkbox]{ width:19px; height:19px; accent-color:var(--ink); flex-shrink:0; }
+  .check-row.disabled{ color:var(--muted); }
+
+  .vote-counter{ width:100%; max-width:440px; text-align:center; color:var(--muted); font-size:14px; margin:14px 0; }
+  .vote-counter b{ color:var(--ink); direction:ltr; unicode-bidi:isolate; }
+
+  /* ---------- Pyramid ---------- */
+  .pyramid-wrap{ width:100%; max-width:440px; display:flex; flex-direction:column; align-items:center; margin-top:6px; }
+  .pyramid{ width:min(320px,80vw); display:flex; flex-direction:column; }
+  .tier{ display:flex; align-items:flex-start; gap:10px; padding:14px 8% 14px calc(8% + 14px); min-height:60px; }
+  .tier .tier-letter{ font-size:26px; font-weight:900; direction:ltr; flex-shrink:0; width:24px; }
+  .tier .tier-names{ display:flex; flex-wrap:wrap; gap:5px 10px; align-content:center; }
+  .tier .tier-names span{ font-size:13px; border-right:2px solid currentColor; padding-right:6px; opacity:0.9; }
+  .tier .tier-empty{ font-size:12px; opacity:0.55; }
+  .tier-a{ background:var(--tier-a); color:var(--tier-a-ink); clip-path:polygon(37% 0%,63% 0%,73% 100%,27% 100%); }
+  .tier-b{ background:var(--tier-b); color:var(--tier-b-ink); clip-path:polygon(27% 0%,73% 0%,83% 100%,17% 100%); }
+  .tier-c{ background:var(--tier-c); color:var(--tier-c-ink); clip-path:polygon(17% 0%,83% 0%,92% 100%,8% 100%); }
+  .tier-d{ background:var(--tier-d); color:var(--tier-d-ink); clip-path:polygon(8% 0%,92% 0%,100% 100%,0% 100%); }
+
+  .f-zone{ width:min(320px,80vw); margin-top:16px; border:1px dashed var(--line-strong); padding:14px 16px; }
+  .f-zone .f-head{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .f-zone .tier-letter{ font-size:22px; font-weight:900; direction:ltr; color:var(--muted); }
+  .f-zone .f-label{ font-size:12px; color:var(--muted); }
+  .f-zone .tier-names span{ color:var(--ink); border-right:2px solid var(--line-strong); }
+
+  .legend-note{ max-width:340px; text-align:center; color:var(--muted); font-size:12.5px; margin-top:22px; line-height:1.9; }
+
+  /* ---------- Join modal ---------- */
+  .modal-backdrop{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); align-items:flex-end; justify-content:center; z-index:50; }
+  .modal-backdrop.open{ display:flex; animation:fadein 200ms ease; }
+  .modal-card{ width:100%; max-width:440px; background:var(--panel); border-top:2px solid var(--ink); padding:26px 20px 32px; animation:modalUp 260ms ease; }
+  @keyframes modalUp{ from{ transform:translateY(24px); opacity:0;} to{ transform:translateY(0); opacity:1;} }
+  .modal-title{ font-size:19px; margin-bottom:4px; }
+  .modal-sub{ font-size:12.5px; color:var(--muted); margin-bottom:18px; }
+  .modal-msg{ font-size:13px; color:var(--muted); min-height:18px; margin-top:2px; }
+
+  ::selection{ background:var(--ink); color:#000; }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="screen-loading" class="screen active">
+  <div class="load-pyramid">
+    <div class="load-band a">A</div>
+    <div class="load-band b">B</div>
+    <div class="load-band c">C</div>
+    <div class="load-band d">D</div>
+  </div>
+  <div class="load-f">F</div>
+  <div>
+    <div class="brand-title">PYRAMID GAME</div>
+    <div class="brand-sub">هر نفر به ۵ نفر رای می‌ده، رتبه‌ها خودشون مشخص می‌شن</div>
+  </div>
+  <div class="load-tap">برای ورود، هر جای صفحه رو لمس کن</div>
+</div>
+
+<!-- HOME (create + directory of groups) -->
+<div id="screen-home" class="screen">
+  <div class="home-title">PYRAMID GAME</div>
+  <div class="home-sub">یه گروه بساز یا از لیست پایین یکی رو انتخاب کن و با کدش وارد شو. هر نفر به ۵ نفر رای می‌ده و رتبه‌ی هرکس از A تا F مشخص می‌شه.</div>
+
+  <div class="card">
+    <div class="eyebrow">ساخت گروه</div>
+    <div class="stack">
+      <div class="field">
+        <label>اسم گروه (مثلاً: کلاس ۲۰۱)</label>
+        <input id="create-groupname" type="text" maxlength="30" placeholder="اسم گروه رو بنویس">
+      </div>
+      <div class="field">
+        <label>اسم تو</label>
+        <input id="create-yourname" type="text" maxlength="24" placeholder="اسمت رو بنویس">
+      </div>
+      <p class="modal-msg" id="create-msg"></p>
+      <button class="btn" id="create-btn" onclick="handleCreate(event)">ساخت گروه</button>
+    </div>
+  </div>
+
+  <div class="section-head">
+    <span class="title">گروه‌ها</span>
+    <button class="icon-btn" onclick="loadGroupDirectory()">به‌روزرسانی</button>
+  </div>
+  <div class="group-list" id="group-list">
+    <p class="empty-state">در حال بارگذاری...</p>
+  </div>
+</div>
+
+<!-- LOBBY -->
+<div id="screen-lobby" class="screen">
+  <div class="topbar">
+    <div class="logo">PYRAMID</div>
+    <div class="code-pill" id="lobby-code"></div>
+  </div>
+  <h2 id="lobby-groupname" style="font-size:22px; margin-bottom:4px;"></h2>
+  <p style="color:var(--muted); font-size:13px; margin-bottom:18px;" id="lobby-me"></p>
+
+  <div class="card" style="text-align:center;">
+    <div class="eyebrow">این کد رو به بقیه بده تا وارد گروه بشن</div>
+    <div id="lobby-code-big" class="ltr" style="font-size:34px; font-weight:900; letter-spacing:8px;"></div>
+    <button class="btn btn-ghost" style="margin-top:14px;" onclick="copyCode(event)" id="copy-code-btn">کپی کردن کد</button>
+  </div>
+
+  <div class="stack" style="width:100%; max-width:440px; margin-top:22px;">
+    <button class="btn" onclick="go('screen-vote'); renderVoteScreen();">رای بده به ۵ نفر</button>
+    <button class="btn btn-ghost" onclick="go('screen-results'); renderResultsScreen();">دیدن هرم رتبه‌بندی</button>
+  </div>
+
+  <div class="section-head" id="lobby-members-title"><span class="title">اعضای گروه</span></div>
+  <div class="member-list" id="lobby-member-list"></div>
+
+  <div class="footer-nav">
+    <button class="btn btn-ghost" onclick="refreshLobby()">به‌روزرسانی</button>
+    <button class="btn btn-ghost" onclick="leaveGroup()">خروج از گروه</button>
+  </div>
+</div>
+
+<!-- VOTE -->
+<div id="screen-vote" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" style="padding-right:0;" onclick="go('screen-lobby')">‹ بازگشت</button>
+    <div class="code-pill" id="vote-code"></div>
+  </div>
+  <h2 style="font-size:22px; margin-bottom:6px;">به ۵ نفر رای بده</h2>
+  <p style="color:var(--muted); font-size:13px; margin-bottom:10px;">هر کسی رو که فکر می‌کنی لیاقت رتبه‌ی بالا رو داره انتخاب کن. حداکثر ۵ نفر.</p>
+  <div class="vote-counter">انتخاب‌شده: <b id="vote-count-label">0</b> از ۵</div>
+  <div class="member-list" id="vote-list"></div>
+  <div style="width:100%; max-width:440px; margin-top:20px;">
+    <button class="btn" id="vote-submit-btn" onclick="submitVoteHandler()" disabled>ثبت رای</button>
+  </div>
+  <p id="vote-status" style="color:var(--muted); font-size:12.5px; margin-top:10px; text-align:center;"></p>
+</div>
+
+<!-- RESULTS -->
+<div id="screen-results" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" style="padding-right:0;" onclick="go('screen-lobby')">‹ بازگشت</button>
+    <div class="code-pill" id="results-code"></div>
+  </div>
+  <h2 style="font-size:22px; margin-bottom:4px;">هرم رتبه‌بندی</h2>
+  <p style="color:var(--muted); font-size:13px; margin-bottom:18px;" id="results-votecount"></p>
+
+  <div class="pyramid-wrap">
+    <div class="pyramid" id="results-pyramid"></div>
+    <div class="f-zone">
+      <div class="f-head">
+        <div class="tier-letter">F</div>
+        <div class="f-label">بیرون از هرم — هیچ رایی نگرفتن</div>
+      </div>
+      <div class="tier-names" id="results-f-names"></div>
+    </div>
+  </div>
+
+  <p class="legend-note">رتبه‌بندی این‌جوری حساب می‌شه: کسایی که هیچ رایی نگرفتن می‌رن رتبه‌ی F. بقیه بر اساس تعداد رای، از بیشترین به کمترین، به چهار گروه تقریباً مساوی A تا D تقسیم می‌شن.</p>
+
+  <div class="footer-nav">
+    <button class="btn btn-ghost" onclick="renderResultsScreen()">به‌روزرسانی نتایج</button>
+  </div>
+</div>
+
+<!-- JOIN MODAL -->
+<div class="modal-backdrop" id="join-modal">
+  <div class="modal-card">
+    <div class="modal-title" id="modal-groupname"></div>
+    <div class="modal-sub">برای ورود، کد گروه رو وارد کن</div>
+    <div class="stack">
+      <div class="field">
+        <label>کد گروه</label>
+        <input id="modal-code" class="ltr" type="text" maxlength="6" placeholder="مثلاً 7K2QF" style="text-align:center; letter-spacing:4px; font-size:20px;">
+      </div>
+      <div class="field">
+        <label>اسم تو</label>
+        <input id="modal-yourname" type="text" maxlength="24" placeholder="اسمت رو بنویس">
+      </div>
+      <p class="modal-msg" id="modal-msg"></p>
+      <button class="btn" id="modal-submit-btn" onclick="handleModalJoin(event)">ورود به گروه</button>
+      <button class="btn btn-ghost" onclick="closeJoinModal()">انصراف</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let state = { groupCode:null, groupName:null, myId:null, myName:null };
+let pendingGroup = null;
+
+/* ---------------- resilient storage layer ----------------
+   Uses window.storage (shared across everyone on this page) when it's
+   available. If it's missing or a call fails for any reason, silently
+   falls back to an in-memory store so the app never shows a "something
+   went wrong" message — it just keeps working for the current session. */
+const memoryStore = {};
+
+async function storageSet(key, valueObj, shared){
+  memoryStore[key] = valueObj;
+  try{
+    if(window.storage){
+      await window.storage.set(key, JSON.stringify(valueObj), shared);
+    }
+  }catch(e){ /* fall back silently to memoryStore, already set above */ }
+  return true;
+}
+async function storageGet(key, shared){
+  try{
+    if(window.storage){
+      const r = await window.storage.get(key, shared);
+      if(r) return JSON.parse(r.value);
+    }
+  }catch(e){ /* fall through to memory */ }
+  return memoryStore.hasOwnProperty(key) ? memoryStore[key] : null;
+}
+async function storageList(prefix, shared){
+  let keys = [];
+  try{
+    if(window.storage){
+      const r = await window.storage.list(prefix, shared);
+      if(r && r.keys) keys = r.keys.slice();
+    }
+  }catch(e){ /* fall through to memory */ }
+  Object.keys(memoryStore).forEach(k => {
+    if(k.startsWith(prefix) && !keys.includes(k)) keys.push(k);
+  });
+  return keys;
+}
+
+// ---------- utils ----------
+function randCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out = '';
+  for(let i=0;i<5;i++) out += chars[Math.floor(Math.random()*chars.length)];
+  return out;
+}
+function randId(){ return 'm' + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4); }
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function go(screenId){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ---------- loading screen ----------
+let leftLoading = false;
+function leaveLoading(){
+  if(leftLoading) return;
+  leftLoading = true;
+  go('screen-home');
+  loadGroupDirectory();
+}
+document.getElementById('screen-loading').addEventListener('click', leaveLoading);
+setTimeout(leaveLoading, 3400);
+
+// ---------- data access ----------
+async function fetchMembers(code){
+  const keys = await storageList(`member:${code}:`, true);
+  const members = [];
+  for(const k of keys){
+    const val = await storageGet(k, true);
+    if(val){
+      const id = k.slice(`member:${code}:`.length);
+      members.push({ id, name: val.name });
+    }
+  }
+  return members;
+}
+async function fetchVotes(code){
+  const keys = await storageList(`votes:${code}:`, true);
+  const votesByVoter = {};
+  for(const k of keys){
+    const val = await storageGet(k, true);
+    const voterId = k.slice(`votes:${code}:`.length);
+    votesByVoter[voterId] = Array.isArray(val) ? val : [];
+  }
+  return votesByVoter;
+}
+
+// ---------- groups directory ----------
+async function loadGroupDirectory(){
+  const listEl = document.getElementById('group-list');
+  listEl.innerHTML = '<p class="empty-state">در حال بارگذاری...</p>';
+  const keys = await storageList('group:', true);
+  const groups = [];
+  for(const k of keys){
+    const val = await storageGet(k, true);
+    if(val){
+      const code = k.slice('group:'.length);
+      groups.push({ code, name: val.name, createdAt: val.createdAt || 0 });
+    }
+  }
+  if(groups.length === 0){
+    listEl.innerHTML = '<p class="empty-state">هنوز گروهی ساخته نشده. اولین گروه رو بساز</p>';
+    return;
+  }
+  groups.sort((a,b) => b.createdAt - a.createdAt);
+
+  const rows = await Promise.all(groups.map(async g => {
+    const members = await fetchMembers(g.code);
+    return { ...g, memberCount: members.length };
+  }));
+
+  listEl.innerHTML = rows.map(g => `
+    <button class="group-row" onclick='openJoinModal(${JSON.stringify(g.code)}, ${JSON.stringify(g.name)})'>
+      <span class="row-main">
+        <span>${escapeHtml(g.name)}</span>
+        <span class="row-sub">${g.memberCount} نفر</span>
+      </span>
+      <span class="chevron">‹</span>
+    </button>
+  `).join('');
+}
+
+// ---------- create group ----------
+async function handleCreate(evt){
+  const btn = evt ? evt.currentTarget : document.getElementById('create-btn');
+  const msgEl = document.getElementById('create-msg');
+  msgEl.textContent = '';
+
+  const groupName = document.getElementById('create-groupname').value.trim();
+  const yourName = document.getElementById('create-yourname').value.trim();
+  if(!groupName){ msgEl.textContent = 'اسم گروه رو بنویس'; return; }
+  if(!yourName){ msgEl.textContent = 'اسمت رو بنویس'; return; }
+
+  btn.disabled = true; btn.textContent = 'در حال ساخت...';
+
+  const code = randCode();
+  await storageSet(`group:${code}`, { name: groupName, createdAt: Date.now() }, true);
+  await joinInternal(code, groupName, yourName);
+
+  btn.disabled = false; btn.textContent = 'ساخت گروه';
+  document.getElementById('create-groupname').value = '';
+  document.getElementById('create-yourname').value = '';
+}
+
+// ---------- join via modal ----------
+function openJoinModal(code, name){
+  pendingGroup = { code, name };
+  document.getElementById('modal-groupname').textContent = name;
+  document.getElementById('modal-code').value = '';
+  document.getElementById('modal-yourname').value = '';
+  document.getElementById('modal-msg').textContent = '';
+  document.getElementById('join-modal').classList.add('open');
+}
+function closeJoinModal(){
+  document.getElementById('join-modal').classList.remove('open');
+  pendingGroup = null;
+}
+
+async function handleModalJoin(evt){
+  const btn = evt ? evt.currentTarget : document.getElementById('modal-submit-btn');
+  const msgEl = document.getElementById('modal-msg');
+  msgEl.textContent = '';
+
+  const codeInput = document.getElementById('modal-code').value.trim().toUpperCase();
+  const yourName = document.getElementById('modal-yourname').value.trim();
+
+  if(!codeInput){ msgEl.textContent = 'کد گروه رو بنویس'; return; }
+  if(!yourName){ msgEl.textContent = 'اسمت رو بنویس'; return; }
+  if(!pendingGroup || codeInput !== pendingGroup.code){
+    msgEl.textContent = 'این کد با گروه انتخاب‌شده جور در نمیاد، دوباره چک کن';
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'در حال ورود...';
+  await joinInternal(pendingGroup.code, pendingGroup.name, yourName);
+  btn.disabled = false; btn.textContent = 'ورود به گروه';
+  closeJoinModal();
+}
+
+async function joinInternal(code, groupName, yourName){
+  const members = await fetchMembers(code);
+  const existing = members.find(m => m.name.trim().toLowerCase() === yourName.trim().toLowerCase());
+  let id;
+  if(existing){
+    id = existing.id;
+  }else{
+    id = randId();
+    await storageSet(`member:${code}:${id}`, { name: yourName.trim() }, true);
+  }
+  state.groupCode = code;
+  state.groupName = groupName;
+  state.myId = id;
+  state.myName = yourName.trim();
+
+  document.getElementById('lobby-code').textContent = code;
+  document.getElementById('lobby-code-big').textContent = code;
+  document.getElementById('vote-code').textContent = code;
+  document.getElementById('results-code').textContent = code;
+  document.getElementById('lobby-groupname').textContent = groupName;
+  document.getElementById('lobby-me').textContent = `تو با اسم «${yourName.trim()}» وارد شدی`;
+
+  go('screen-lobby');
+  refreshLobby();
+}
+
+async function copyCode(evt){
+  const btn = evt ? evt.currentTarget : document.getElementById('copy-code-btn');
+  try{
+    await navigator.clipboard.writeText(state.groupCode);
+    btn.textContent = 'کپی شد ✓';
+  }catch(e){
+    btn.textContent = state.groupCode;
+  }
+  setTimeout(() => { btn.textContent = 'کپی کردن کد'; }, 1800);
+}
+
+function leaveGroup(){
+  state = { groupCode:null, groupName:null, myId:null, myName:null };
+  go('screen-home');
+  loadGroupDirectory();
+}
+
+// ---------- lobby ----------
+async function refreshLobby(){
+  const listEl = document.getElementById('lobby-member-list');
+  listEl.innerHTML = '<p class="empty-state">در حال بارگذاری...</p>';
+  const members = await fetchMembers(state.groupCode);
+  document.querySelector('#lobby-members-title .title').textContent = `اعضای گروه (${members.length} نفر)`;
+
+  if(members.length === 0){
+    listEl.innerHTML = '<p class="empty-state">هنوز کسی وارد نشده</p>';
+    return;
+  }
+  listEl.innerHTML = members
+    .sort((a,b)=>a.name.localeCompare(b.name,'fa'))
+    .map(m => `
+      <div class="member-row">
+        <span>${escapeHtml(m.name)}</span>
+        ${m.id === state.myId ? '<span class="me-tag">خودت</span>' : ''}
+      </div>
+    `).join('');
+}
+
+// ---------- voting ----------
+let selectedVotes = [];
+
+async function renderVoteScreen(){
+  const listEl = document.getElementById('vote-list');
+  listEl.innerHTML = '<p class="empty-state">در حال بارگذاری...</p>';
+  document.getElementById('vote-status').textContent = '';
+
+  const members = await fetchMembers(state.groupCode);
+  const others = members.filter(m => m.id !== state.myId).sort((a,b)=>a.name.localeCompare(b.name,'fa'));
+
+  const myVotes = await storageGet(`votes:${state.groupCode}:${state.myId}`, true);
+  selectedVotes = Array.isArray(myVotes) ? myVotes.slice() : [];
+
+  if(others.length === 0){
+    listEl.innerHTML = '<p class="empty-state">هنوز عضو دیگه‌ای وارد نشده</p>';
+    updateVoteCounter();
+    return;
+  }
+
+  listEl.innerHTML = others.map(m => `
+    <label class="check-row" id="row-${m.id}">
+      <input type="checkbox" value="${m.id}" ${selectedVotes.includes(m.id) ? 'checked' : ''} onchange="toggleVote('${m.id}')">
+      <span>${escapeHtml(m.name)}</span>
+    </label>
+  `).join('');
+
+  if(myVotes){
+    document.getElementById('vote-status').textContent = 'قبلاً رای دادی — می‌تونی تغییرش بدی و دوباره ثبت کنی';
+  }
+  updateVoteCounter();
+}
+
+function toggleVote(id){
+  const idx = selectedVotes.indexOf(id);
+  if(idx >= 0){
+    selectedVotes.splice(idx,1);
+  }else{
+    if(selectedVotes.length >= 5){
+      document.getElementById(`row-${id}`).querySelector('input').checked = false;
+      return;
+    }
+    selectedVotes.push(id);
+  }
+  updateVoteCounter();
+}
+
+function updateVoteCounter(){
+  document.getElementById('vote-count-label').textContent = selectedVotes.length;
+  document.getElementById('vote-submit-btn').disabled = !(selectedVotes.length >= 1 && selectedVotes.length <= 5);
+  document.querySelectorAll('#vote-list .check-row').forEach(row => {
+    const cb = row.querySelector('input');
+    if(!cb.checked && selectedVotes.length >= 5){
+      cb.disabled = true;
+      row.classList.add('disabled');
+    }else{
+      cb.disabled = false;
+      row.classList.remove('disabled');
+    }
+  });
+}
+
+async function submitVoteHandler(){
+  const btn = document.getElementById('vote-submit-btn');
+  btn.disabled = true; btn.textContent = 'در حال ثبت...';
+  await storageSet(`votes:${state.groupCode}:${state.myId}`, selectedVotes, true);
+  btn.textContent = 'ثبت رای';
+  document.getElementById('vote-status').textContent = 'رایت با موفقیت ثبت شد ✓';
+  updateVoteCounter();
+}
+
+// ---------- results ----------
+function splitSizes(n, parts){
+  const base = Math.floor(n/parts), rem = n % parts;
+  const sizes = [];
+  for(let i=0;i<parts;i++) sizes.push(base + (i < rem ? 1 : 0));
+  return sizes;
+}
+
+function computeTiers(members, votesByVoter){
+  const counts = {};
+  members.forEach(m => counts[m.id] = 0);
+  Object.values(votesByVoter).forEach(arr => {
+    (arr||[]).forEach(id => { if(counts[id] !== undefined) counts[id]++; });
+  });
+  const ranked = members.map(m => ({...m, count: counts[m.id] || 0}));
+  const zero = ranked.filter(m => m.count === 0).sort((a,b)=>a.name.localeCompare(b.name,'fa'));
+  const nonzero = ranked.filter(m => m.count > 0).sort((a,b)=> b.count - a.count || a.name.localeCompare(b.name,'fa'));
+
+  const sizes = splitSizes(nonzero.length, 4);
+  const tiers = {};
+  let idx = 0;
+  ['A','B','C','D'].forEach((t,i) => {
+    tiers[t] = nonzero.slice(idx, idx + sizes[i]);
+    idx += sizes[i];
+  });
+  return { tiers, F: zero, totalVotes: Object.values(votesByVoter).reduce((s,a)=>s+(a?a.length:0),0) };
+}
+
+function tierBandHtml(letter, cssClass, list){
+  const names = list.length
+    ? list.map(m => `<span>${escapeHtml(m.name)}${m.count ? ` (${m.count})` : ''}</span>`).join('')
+    : '<span class="tier-empty">—</span>';
+  return `
+    <div class="tier ${cssClass}">
+      <div class="tier-letter">${letter}</div>
+      <div class="tier-names">${names}</div>
+    </div>
+  `;
+}
+
+async function renderResultsScreen(){
+  const pyramidEl = document.getElementById('results-pyramid');
+  const fEl = document.getElementById('results-f-names');
+  pyramidEl.innerHTML = '<p class="empty-state">در حال محاسبه...</p>';
+  fEl.innerHTML = '';
+
+  const members = await fetchMembers(state.groupCode);
+  const votesByVoter = await fetchVotes(state.groupCode);
+  const { tiers, F, totalVotes } = computeTiers(members, votesByVoter);
+
+  document.getElementById('results-votecount').textContent =
+    `${members.length} عضو — ${Object.keys(votesByVoter).length} نفر تا الان رای دادن — مجموع ${totalVotes} رای`;
+
+  if(members.length === 0){
+    pyramidEl.innerHTML = '<p class="empty-state">هنوز عضوی نیست</p>';
+    return;
+  }
+
+  pyramidEl.innerHTML =
+    tierBandHtml('A','tier-a', tiers.A) +
+    tierBandHtml('B','tier-b', tiers.B) +
+    tierBandHtml('C','tier-c', tiers.C) +
+    tierBandHtml('D','tier-d', tiers.D);
+
+  fEl.innerHTML = F.length
+    ? F.map(m => `<span>${escapeHtml(m.name)}</span>`).join('')
+    : '<span class="tier-empty">کسی اینجا نیست</span>';
+}
+</script>
+</body>
+</html>
