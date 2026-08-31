@@ -155,6 +155,7 @@
 <div id="screen-home" class="screen">
   <div class="home-title">PYRAMID GAME</div>
   <div class="home-sub">یه گروه بساز یا از لیست پایین یکی رو انتخاب کن و با کدش وارد شو. هر نفر به ۵ نفر رای می‌ده و رتبه‌ی هرکس از A تا F مشخص می‌شه.</div>
+  <p style="color:var(--muted); font-size:11.5px; text-align:center; max-width:340px; margin:-18px 0 26px; line-height:1.8;">این نسخه روی خود دستگاهت ذخیره می‌شه. برای اینکه بین چند گوشی هم‌زمان کار کنه، همه باید همین فایل رو (نه لینک جدا) روی یه سرور مشترک باز کنن.</p>
 
   <div class="card">
     <div class="eyebrow">ساخت گروه</div>
@@ -279,19 +280,46 @@ let state = { groupCode:null, groupName:null, myId:null, myName:null };
 let pendingGroup = null;
 
 /* ---------------- resilient storage layer ----------------
-   Uses window.storage (shared across everyone on this page) when it's
-   available. If it's missing or a call fails for any reason, silently
-   falls back to an in-memory store so the app never shows a "something
-   went wrong" message — it just keeps working for the current session. */
-const memoryStore = {};
+   Tries window.storage first (shared with everyone else on this page,
+   when the page is running inside a host that provides it). Every write
+   is also mirrored into localStorage, which is tied to this browser/device
+   and survives closing the app, reloading, or opening the file again —
+   so a group you create is never lost on your own phone even if
+   window.storage isn't available. Reads prefer window.storage but fall
+   back to localStorage automatically, and nothing here ever surfaces an
+   error to the user. */
+const LS_PREFIX = 'pg:';
+
+function lsSet(key, valueObj){
+  try{ localStorage.setItem(LS_PREFIX + key, JSON.stringify(valueObj)); }catch(e){ /* private mode etc: ignore */ }
+}
+function lsGet(key){
+  try{
+    const raw = localStorage.getItem(LS_PREFIX + key);
+    return raw !== null ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function lsList(prefix){
+  const keys = [];
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if(k && k.startsWith(LS_PREFIX)){
+        const realKey = k.slice(LS_PREFIX.length);
+        if(realKey.startsWith(prefix)) keys.push(realKey);
+      }
+    }
+  }catch(e){ /* ignore */ }
+  return keys;
+}
 
 async function storageSet(key, valueObj, shared){
-  memoryStore[key] = valueObj;
+  lsSet(key, valueObj);
   try{
     if(window.storage){
       await window.storage.set(key, JSON.stringify(valueObj), shared);
     }
-  }catch(e){ /* fall back silently to memoryStore, already set above */ }
+  }catch(e){ /* already saved locally above */ }
   return true;
 }
 async function storageGet(key, shared){
@@ -300,8 +328,8 @@ async function storageGet(key, shared){
       const r = await window.storage.get(key, shared);
       if(r) return JSON.parse(r.value);
     }
-  }catch(e){ /* fall through to memory */ }
-  return memoryStore.hasOwnProperty(key) ? memoryStore[key] : null;
+  }catch(e){ /* fall through to local */ }
+  return lsGet(key);
 }
 async function storageList(prefix, shared){
   let keys = [];
@@ -310,10 +338,8 @@ async function storageList(prefix, shared){
       const r = await window.storage.list(prefix, shared);
       if(r && r.keys) keys = r.keys.slice();
     }
-  }catch(e){ /* fall through to memory */ }
-  Object.keys(memoryStore).forEach(k => {
-    if(k.startsWith(prefix) && !keys.includes(k)) keys.push(k);
-  });
+  }catch(e){ /* fall through to local */ }
+  lsList(prefix).forEach(k => { if(!keys.includes(k)) keys.push(k); });
   return keys;
 }
 
